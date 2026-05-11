@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>赛博朋克项目策划工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#8A9A5B',
+                        secondary: '#BFA181',
+                        accent: '#9FA0C3',
+                        highlight: '#FF6B6B',
+                        cyan: '#00E5FF',
+                        dark: '#121212',
+                        darker: '#0A0A0A',
+                        'dark-card': '#1E1E1E'
+                    },
+                    fontFamily: {
+                        sans: ['Rajdhani', 'Inter', 'sans-serif'],
+                        mono: ['Orbitron', 'monospace']
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'slide-in': 'slideIn 0.5s ease-out forwards',
+                        'fade-in': 'fadeIn 0.5s ease-out forwards'
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' }
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px rgba(0, 229, 255, 0.5)' },
+                            '100%': { boxShadow: '0 0 20px rgba(0, 229, 255, 0.8), 0 0 30px rgba(255, 107, 107, 0.5)' }
+                        },
+                        slideIn: {
+                            '0%': { transform: 'translateX(-100%)', opacity: 0 },
+                            '100%': { transform: 'translateX(0)', opacity: 1 }
+                        },
+                        fadeIn: {
+                            '0%': { opacity: 0 },
+                            '100%': { opacity: 1 }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .text-shadow {
+                text-shadow: 0 0 10px rgba(0, 229, 255, 0.7);
+            }
+            .text-shadow-cyan {
+                text-shadow: 0 0 5px rgba(0, 229, 255, 0.5);
+            }
+            .text-shadow-highlight {
+                text-shadow: 0 0 5px rgba(255, 107, 107, 0.5);
+            }
+            .border-glow {
+                box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+            }
+            .border-glow-highlight {
+                box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+            }
+            .bg-grid {
+                background-image: 
+                    linear-gradient(rgba(0, 229, 255, 0.1) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0, 229, 255, 0.1) 1px, transparent 1px);
+                background-size: 20px 20px;
+            }
+            .glass {
+                background: rgba(30, 30, 30, 0.7);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+            .input-cyber {
+                @apply bg-dark border border-cyan/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan/50 transition-all duration-300;
+            }
+            .btn-cyber {
+                @apply bg-primary/20 border border-primary text-primary hover:bg-primary/30 transition-all duration-300 flex items-center justify-center gap-2;
+            }
+            .btn-highlight {
+                @apply bg-highlight/20 border border-highlight text-highlight hover:bg-highlight/30 transition-all duration-300 flex items-center justify-center gap-2;
+            }
+            .btn-cyan {
+                @apply bg-cyan/20 border border-cyan text-cyan hover:bg-cyan/30 transition-all duration-300 flex items-center justify-center gap-2;
+            }
+            .card-cyber {
+                @apply glass border border-cyan/20 rounded-lg p-4 hover:border-cyan/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan/10;
+            }
+            .scrollbar-cyber::-webkit-scrollbar {
+                width: 6px;
+            }
+            .scrollbar-cyber::-webkit-scrollbar-track {
+                background: rgba(0, 229, 255, 0.1);
+                border-radius: 3px;
+            }
+            .scrollbar-cyber::-webkit-scrollbar-thumb {
+                background: rgba(0, 229, 255, 0.5);
+                border-radius: 3px;
+            }
+            .scrollbar-cyber::-webkit-scrollbar-thumb:hover {
+                background: rgba(0, 229, 255, 0.8);
+            }
+            .form-section {
+                @apply border border-cyan/30 rounded-lg p-4 mb-6;
+            }
+            .form-section-title {
+                @apply text-xl font-bold text-cyan mb-4 flex items-center gap-2;
+            }
+            .character-card {
+                @apply border border-secondary/30 rounded-lg p-3 mb-3 bg-dark/50;
+            }
+            .node-card {
+                @apply border border-accent/30 rounded-lg p-3 mb-3 bg-dark/50;
+            }
+            .material-card {
+                @apply border border-highlight/30 rounded-lg p-3 mb-3 bg-dark/50;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-darker text-white min-h-screen overflow-x-hidden font-sans">
+    <!-- 3D背景 -->
+    <div id="canvas-container" class="fixed top-0 left-0 w-full h-full -z-10"></div>
+    
+    <!-- 网格背景 -->
+    <div class="fixed top-0 left-0 w-full h-full bg-grid opacity-20 -z-10"></div>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- 标题 -->
+        <header class="text-center mb-8">
+            <h1 class="text-5xl md:text-7xl font-bold font-mono text-transparent bg-clip-text bg-gradient-to-r from-cyan to-highlight mb-4 animate-pulse-slow">
+                NEON<span class="text-white">PLANNER</span>
+            </h1>
+        </header>
+
+        <!-- 主内容区 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- 项目信息填写模块 -->
+            <section class="card-cyber animate-float">
+                <h2 class="text-2xl font-bold mb-6 flex items-center gap-2 text-cyan text-shadow-cyan">
+                    <i class="fa fa-terminal"></i>
+                    项目创建
+                </h2>
+                <form id="project-form" class="space-y-6">
+                    <!-- 项目基础信息 -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">
+                            <i class="fa fa-info-circle"></i>
+                            项目基础信息
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">项目名称 *</label>
+                                <input type="text" id="project-name" class="input-cyber w-full p-3 rounded-lg" placeholder="输入项目名称..." required>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">IP来源</label>
+                                <input type="text" id="project-ip-source" class="input-cyber w-full p-3 rounded-lg" placeholder="输入IP来源...">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">项目类型</label>
+                                <select id="project-type" class="input-cyber w-full p-3 rounded-lg">
+                                    <option value="短剧">短剧</option>
+                                    <option value="短篇">短篇</option>
+                                    <option value="电影">电影</option>
+                                </select>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">分类</label>
+                                    <div class="flex gap-4">
+                                        <label class="flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="project-category" value="AI" class="text-cyan focus:ring-cyan" checked>
+                                            <span>AI</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="project-category" value="实拍" class="text-cyan focus:ring-cyan">
+                                            <span>实拍</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">用途</label>
+                                    <div class="flex gap-4">
+                                        <label class="flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="project-purpose" value="拉片" class="text-cyan focus:ring-cyan" checked>
+                                            <span>拉片</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="project-purpose" value="策划" class="text-cyan focus:ring-cyan">
+                                            <span>策划</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">一句话故事</label>
+                                <input type="text" id="project-one-line" class="input-cyber w-full p-3 rounded-lg" placeholder="用一句话概括故事...">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">期待感</label>
+                                <textarea id="project-expectation" rows="2" class="input-cyber w-full p-3 rounded-lg" placeholder="描述观众的期待感..."></textarea>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">钩子</label>
+                                <textarea id="project-hook" rows="2" class="input-cyber w-full p-3 rounded-lg" placeholder="故事的钩子是什么..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 人设信息 -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">
+                            <i class="fa fa-users"></i>
+                            人设信息
+                        </h3>
+                        
+                        <!-- 主角 -->
+                        <div class="mb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="text-lg font-semibold text-secondary">主角</h4>
+                                <button type="button" onclick="addCharacter('protagonist')" class="btn-cyber px-3 py-1 rounded-lg text-sm">
+                                    <i class="fa fa-plus"></i>
+                                    增加主角
+                                </button>
+                            </div>
+                            <div id="protagonist-container" class="space-y-3">
+                                <!-- 主角将在这里动态生成 -->
+                            </div>
+                        </div>
+                        
+                        <!-- 反派 -->
+                        <div class="mb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="text-lg font-semibold text-highlight">反派</h4>
+                                <button type="button" onclick="addCharacter('antagonist')" class="btn-highlight px-3 py-1 rounded-lg text-sm">
+                                    <i class="fa fa-plus"></i>
+                                    增加反派
+                                </button>
+                            </div>
+                            <div id="antagonist-container" class="space-y-3">
+                                <!-- 反派将在这里动态生成 -->
+                            </div>
+                        </div>
+                        
+                        <!-- 配角 -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="text-lg font-semibold text-accent">配角</h4>
+                                <button type="button" onclick="addCharacter('supporting')" class="btn-cyber px-3 py-1 rounded-lg text-sm">
+                                    <i class="fa fa-plus"></i>
+                                    增加配角
+                                </button>
+                            </div>
+                            <div id="supporting-container" class="space-y-3">
+                                <!-- 配角将在这里动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 结构信息 -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">
+                            <i class="fa fa-sitemap"></i>
+                            结构信息
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">开篇</label>
+                                <textarea id="structure-opening" rows="3" class="input-cyber w-full p-3 rounded-lg" placeholder="描述故事的开篇..."></textarea>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">矛盾初现</label>
+                                <textarea id="structure-conflict-emerge" rows="3" class="input-cyber w-full p-3 rounded-lg" placeholder="描述矛盾如何出现..."></textarea>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">矛盾爆发</label>
+                                <textarea id="structure-conflict-escalate" rows="3" class="input-cyber w-full p-3 rounded-lg" placeholder="描述矛盾如何爆发..."></textarea>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">矛盾转折</label>
+                                <textarea id="structure-conflict-turn" rows="3" class="input-cyber w-full p-3 rounded-lg" placeholder="描述矛盾的转折点..."></textarea>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">矛盾解决</label>
+                                <textarea id="structure-conflict-resolve" rows="3" class="input-cyber w-full p-3 rounded-lg" placeholder="描述矛盾如何解决..."></textarea>
+                            </div>
+                            
+                            <!-- 关键节点 -->
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="block text-sm font-medium text-gray-300">关键节点</label>
+                                    <button type="button" onclick="addKeyNode()" class="btn-cyan px-3 py-1 rounded-lg text-sm">
+                                        <i class="fa fa-plus"></i>
+                                        增加关键节点
+                                    </button>
+                                </div>
+                                <div id="key-nodes-container" class="space-y-3">
+                                    <!-- 关键节点将在这里动态生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 素材信息 -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">
+                            <i class="fa fa-film"></i>
+                            素材信息
+                        </h3>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-sm font-medium text-gray-300">参考素材</label>
+                            <button type="button" onclick="addMaterial()" class="btn-highlight px-3 py-1 rounded-lg text-sm">
+                                <i class="fa fa-plus"></i>
+                                增加素材
+                            </button>
+                        </div>
+                        <div id="materials-container" class="space-y-3">
+                            <!-- 素材将在这里动态生成 -->
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <button type="submit" class="btn-highlight w-full py-3 rounded-lg font-semibold text-lg animate-glow">
+                            <i class="fa fa-save"></i>
+                            保存项目
+                        </button>
+                        <button type="button" onclick="clearForm()" class="btn-cyber w-full py-3 rounded-lg font-semibold text-lg">
+                            <i class="fa fa-refresh"></i>
+                            清空内容
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- 项目列表查看模块 -->
+            <section>
+                <!-- 搜索和导出 -->
+                <div class="card-cyber mb-6">
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="relative flex-1">
+                            <input type="text" id="search-input" class="input-cyber w-full p-3 pl-10 rounded-lg" placeholder="搜索项目...">
+                            <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                        <div class="flex gap-2">
+                            <select id="export-format" class="input-cyber px-3 py-2 rounded-lg text-sm">
+                                <option value="csv">CSV格式</option>
+                                <option value="txt">文档格式</option>
+                                <option value="json">JSON格式</option>
+                            </select>
+                            <button id="export-all-btn" class="btn-cyan px-4 py-2 rounded-lg text-sm">
+                                <i class="fa fa-download"></i>
+                                导出全部
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 拉片项目列表 -->
+                <div class="card-cyber mb-6">
+                    <h2 class="text-2xl font-bold mb-4 flex items-center gap-2 text-cyan text-shadow-cyan">
+                        <i class="fa fa-film"></i>
+                        拉片项目
+                        <span id="analysis-count" class="text-sm bg-cyan/20 text-cyan px-2 py-1 rounded-full">0</span>
+                    </h2>
+                    <div id="analysis-projects-list" class="space-y-4 max-h-[35vh] overflow-y-auto pr-2 scrollbar-cyber">
+                        <!-- 拉片项目将在这里动态生成 -->
+                    </div>
+                </div>
+
+                <!-- 策划项目列表 -->
+                <div class="card-cyber">
+                    <h2 class="text-2xl font-bold mb-4 flex items-center gap-2 text-highlight text-shadow-highlight">
+                        <i class="fa fa-lightbulb-o"></i>
+                        策划项目
+                        <span id="plan-count" class="text-sm bg-highlight/20 text-highlight px-2 py-1 rounded-full">0</span>
+                    </h2>
+                    <div id="plan-projects-list" class="space-y-4 max-h-[35vh] overflow-y-auto pr-2 scrollbar-cyber">
+                        <!-- 策划项目将在这里动态生成 -->
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- 项目详情模态框 -->
+    <div id="project-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
+        <div class="glass border border-cyan/50 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-title" class="text-2xl font-bold text-cyan"></h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="modal-content" class="space-y-6">
+                <!-- 项目详情将在这里动态生成 -->
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button onclick="closeModal()" class="btn-cyber px-4 py-2 rounded-lg">
+                    <i class="fa fa-times"></i>
+                    关闭
+                </button>
+                <button id="modal-export-btn" class="btn-highlight px-4 py-2 rounded-lg">
+                    <i class="fa fa-download"></i>
+                    导出项目
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知提示 -->
+    <div id="notification" class="fixed top-4 right-4 px-6 py-3 rounded-lg glass border border-cyan transform translate-x-full transition-transform duration-300 z-50 flex items-center gap-3">
+        <i id="notification-icon" class="fa fa-check-circle text-cyan text-xl"></i>
+        <span id="notification-message">操作成功</span>
+    </div>
+
+    <script>
+        // 全局变量
+        let currentProjectId = null;
+        let characterCounts = { protagonist: 0, antagonist: 0, supporting: 0 };
+        let keyNodeCount = 0;
+        let materialCount = 0;
+
+        // 3D背景效果
+        document.addEventListener('DOMContentLoaded', function() {
+            // 创建场景
+            const scene = new THREE.Scene();
+            
+            // 创建相机
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 30;
+            
+            // 创建渲染器
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000, 0);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // 创建粒子系统
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particlesCount = 1500;
+            
+            const posArray = new Float32Array(particlesCount * 3);
+            const colorsArray = new Float32Array(particlesCount * 3);
+            
+            for(let i = 0; i < particlesCount * 3; i++) {
+                // 位置
+                posArray[i] = (Math.random() - 0.5) * 100;
+                
+                // 颜色
+                if (Math.random() > 0.5) {
+                    // 青色
+                    colorsArray[i * 3] = 0;
+                    colorsArray[i * 3 + 1] = 0.9;
+                    colorsArray[i * 3 + 2] = 1;
+                } else {
+                    // 红色
+                    colorsArray[i * 3] = 1;
+                    colorsArray[i * 3 + 1] = 0.4;
+                    colorsArray[i * 3 + 2] = 0.4;
+                }
+            }
+            
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colorsArray, 3));
+            
+            const particlesMaterial = new THREE.PointsMaterial({
+                size: 0.2,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particlesMesh);
+            
+            // 动画循环
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                particlesMesh.rotation.x += 0.0005;
+                particlesMesh.rotation.y += 0.0005;
+                
+                renderer.render(scene, camera);
+            }
+            
+            animate();
+            
+            // 响应式调整
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        });
+
+        // 项目管理类
+        class ProjectManager {
+            constructor() {
+                this.projects = JSON.parse(localStorage.getItem('cyberpunk_projects')) || [];
+                this.loadProjects();
+                this.bindEvents();
+            }
+            
+            bindEvents() {
+                // 表单提交
+                document.getElementById('project-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.saveProject();
+                });
+                
+                // 搜索功能
+                document.getElementById('search-input').addEventListener('input', (e) => {
+                    this.searchProjects(e.target.value);
+                });
+                
+                // 导出全部
+                document.getElementById('export-all-btn').addEventListener('click', () => {
+                    this.exportAllProjects();
+                });
+                
+                // 模态框导出
+                document.getElementById('modal-export-btn').addEventListener('click', () => {
+                    if (currentProjectId) {
+                        const format = document.getElementById('export-format').value;
+                        this.exportSingleProject(currentProjectId, format);
+                    }
+                });
+            }
+            
+            saveProject() {
+                const project = {
+                    id: currentProjectId || Date.now().toString(),
+                    name: document.getElementById('project-name').value,
+                    ipSource: document.getElementById('project-ip-source').value,
+                    type: document.getElementById('project-type').value,
+                    category: document.querySelector('input[name="project-category"]:checked').value,
+                    purpose: document.querySelector('input[name="project-purpose"]:checked').value,
+                    oneLine: document.getElementById('project-one-line').value,
+                    expectation: document.getElementById('project-expectation').value,
+                    hook: document.getElementById('project-hook').value,
+                    
+                    // 角色信息
+                    characters: {
+                        protagonist: this.getCharacters('protagonist'),
+                        antagonist: this.getCharacters('antagonist'),
+                        supporting: this.getCharacters('supporting')
+                    },
+                    
+                    // 结构信息
+                    structure: {
+                        opening: document.getElementById('structure-opening').value,
+                        conflictEmerge: document.getElementById('structure-conflict-emerge').value,
+                        conflictEscalate: document.getElementById('structure-conflict-escalate').value,
+                        conflictTurn: document.getElementById('structure-conflict-turn').value,
+                        conflictResolve: document.getElementById('structure-conflict-resolve').value,
+                        keyNodes: this.getKeyNodes()
+                    },
+                    
+                    // 素材信息
+                    materials: this.getMaterials(),
+                    
+                    createdAt: currentProjectId ? this.projects.find(p => p.id === currentProjectId)?.createdAt : new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                
+                if (currentProjectId) {
+                    // 更新现有项目
+                    const index = this.projects.findIndex(p => p.id === currentProjectId);
+                    this.projects[index] = project;
+                    this.showNotification('项目更新成功！', 'success');
+                } else {
+                    // 创建新项目
+                    this.projects.push(project);
+                    this.showNotification('项目创建成功！', 'success');
+                }
+                
+                this.saveToStorage();
+                this.loadProjects();
+                this.clearForm();
+                currentProjectId = null;
+            }
+            
+            getCharacters(type) {
+                const container = document.getElementById(`${type}-container`);
+                const cards = container.querySelectorAll('.character-card');
+                const characters = [];
+                
+                cards.forEach(card => {
+                    characters.push({
+                        name: card.querySelector(`.${type}-name`).value,
+                        age: card.querySelector(`.${type}-age`).value,
+                        identity: card.querySelector(`.${type}-identity`).value,
+                        motivation: card.querySelector(`.${type}-motivation`).value,
+                        goal: card.querySelector(`.${type}-goal`).value,
+                        psychology: card.querySelector(`.${type}-psychology`).value
+                    });
+                });
+                
+                return characters;
+            }
+            
+            getKeyNodes() {
+                const container = document.getElementById('key-nodes-container');
+                const cards = container.querySelectorAll('.node-card');
+                const nodes = [];
+                
+                cards.forEach(card => {
+                    nodes.push({
+                        title: card.querySelector('.node-title').value,
+                        description: card.querySelector('.node-description').value
+                    });
+                });
+                
+                return nodes;
+            }
+            
+            getMaterials() {
+                const container = document.getElementById('materials-container');
+                const cards = container.querySelectorAll('.material-card');
+                const materials = [];
+                
+                cards.forEach(card => {
+                    materials.push({
+                        title: card.querySelector('.material-title').value,
+                        description: card.querySelector('.material-description').value,
+                        source: card.querySelector('.material-source').value
+                    });
+                });
+                
+                return materials;
+            }
+            
+            loadProjects(searchTerm = '') {
+                const analysisList = document.getElementById('analysis-projects-list');
+                const planList = document.getElementById('plan-projects-list');
+                
+                // 过滤项目
+                let filteredProjects = this.projects;
+                if (searchTerm) {
+                    filteredProjects = this.projects.filter(project => 
+                        project.name.toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+                }
+                
+                // 按用途分类项目
+                const analysisProjects = filteredProjects.filter(p => p.purpose === '拉片');
+                const planProjects = filteredProjects.filter(p => p.purpose === '策划');
+                
+                // 更新计数
+                document.getElementById('analysis-count').textContent = analysisProjects.length;
+                document.getElementById('plan-count').textContent = planProjects.length;
+                
+                // 清空列表
+                analysisList.innerHTML = '';
+                planList.innerHTML = '';
+                
+                // 渲染拉片项目
+                if (analysisProjects.length === 0) {
+                    analysisList.innerHTML = '<p class="text-gray-400 text-center py-4">暂无拉片项目</p>';
+                } else {
+                    analysisProjects.forEach(project => {
+                        analysisList.appendChild(this.createProjectCard(project));
+                    });
+                }
+                
+                // 渲染策划项目
+                if (planProjects.length === 0) {
+                    planList.innerHTML = '<p class="text-gray-400 text-center py-4">暂无策划项目</p>';
+                } else {
+                    planProjects.forEach(project => {
+                        planList.appendChild(this.createProjectCard(project));
+                    });
+                }
+            }
+            
+            createProjectCard(project) {
+                const card = document.createElement('div');
+                card.className = 'glass border border-cyan/30 rounded-lg p-4 hover:border-cyan/50 transition-all duration-300 cursor-pointer';
+                card.onclick = () => this.showProjectDetails(project.id);
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <h3 class="font-bold text-lg ${project.purpose === '拉片' ? 'text-cyan' : 'text-highlight'}">${project.name}</h3>
+                        <div class="flex gap-2">
+                            <button onclick="event.stopPropagation(); projectManager.editProject('${project.id}')" class="text-cyan hover:text-cyan/80">
+                                <i class="fa fa-edit"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); projectManager.deleteProject('${project.id}')" class="text-highlight hover:text-highlight/80">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-300 mb-2">类型: ${project.type} | ${project.category}</p>
+                    <p class="text-sm mb-2 line-clamp-2">${project.oneLine || '暂无简介'}</p>
+                    <div class="text-xs text-gray-400 flex justify-between">
+                        <span>角色: ${this.getTotalCharacters(project)} | 节点: ${project.structure.keyNodes.length}</span>
+                        <span>${new Date(project.updatedAt).toLocaleDateString()}</span>
+                    </div>
+                `;
+                return card;
+            }
+            
+            getTotalCharacters(project) {
+                return project.characters.protagonist.length + 
+                       project.characters.antagonist.length + 
+                       project.characters.supporting.length;
+            }
+            
+            searchProjects(searchTerm) {
+                this.loadProjects(searchTerm);
+            }
+            
+            showProjectDetails(id) {
+                const project = this.projects.find(p => p.id === id);
+                if (!project) return;
+                
+                currentProjectId = id;
+                
+                // 填充模态框
+                document.getElementById('modal-title').textContent = project.name;
+                const content = document.getElementById('modal-content');
+                
+                content.innerHTML = `
+                    <!-- 基础信息 -->
+                    <div class="border border-cyan/30 rounded-lg p-4">
+                        <h4 class="text-lg font-semibold text-cyan mb-3">基础信息</h4>
+                        <div class="space-y-2 text-sm">
+                            <p><span class="text-gray-400">项目类型:</span> ${project.type}</p>
+                            <p><span class="text-gray-400">分类:</span> ${project.category}</p>
+                            <p><span class="text-gray-400">IP来源:</span> ${project.ipSource || '原创'}</p>
+                            <p><span class="text-gray-400">一句话故事:</span> ${project.oneLine || '暂无'}</p>
+                            <p><span class="text-gray-400">期待感:</span> ${project.expectation || '暂无'}</p>
+                            <p><span class="text-gray-400">钩子:</span> ${project.hook || '暂无'}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 角色信息 -->
+                    ${this.renderCharactersInModal(project.characters)}
+                    
+                    <!-- 结构信息 -->
+                    <div class="border border-cyan/30 rounded-lg p-4">
+                        <h4 class="text-lg font-semibold text-cyan mb-3">结构信息</h4>
+                        <div class="space-y-4 text-sm">
+                            <div>
+                                <p class="text-gray-400 mb-1">开篇</p>
+                                <p>${project.structure.opening || '暂无'}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-400 mb-1">矛盾初现</p>
+                                <p>${project.structure.conflictEmerge || '暂无'}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-400 mb-1">矛盾爆发</p>
+                                <p>${project.structure.conflictEscalate || '暂无'}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-400 mb-1">矛盾转折</p>
+                                <p>${project.structure.conflictTurn || '暂无'}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-400 mb-1">矛盾解决</p>
+                                <p>${project.structure.conflictResolve || '暂无'}</p>
+                            </div>
+                            ${project.structure.keyNodes.length > 0 ? `
+                                <div>
+                                    <p class="text-gray-400 mb-1">关键节点 (${project.structure.keyNodes.length})</p>
+                                    <div class="space-y-2">
+                                        ${project.structure.keyNodes.map((node, index) => `
+                                            <div class="bg-dark/50 p-2 rounded">
+                                                <p class="font-medium">${index + 1}. ${node.title}</p>
+                                                <p>${node.description}</p>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    
+                    <!-- 素材信息 -->
+                    ${project.materials.length > 0 ? `
+                        <div class="border border-cyan/30 rounded-lg p-4">
+                            <h4 class="text-lg font-semibold text-cyan mb-3">素材信息 (${project.materials.length})</h4>
+                            <div class="space-y-3 text-sm">
+                                ${project.materials.map((material, index) => `
+                                    <div class="bg-dark/50 p-2 rounded">
+                                        <p class="font-medium">${index + 1}. ${material.title}</p>
+                                        <p>${material.description}</p>
+                                        ${material.source ? `<p class="text-gray-400">来源: ${material.source}</p>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
+                
+                // 显示模态框
+                document.getElementById('project-modal').classList.remove('hidden');
+            }
+            
+            renderCharactersInModal(characters) {
+                let html = '<div class="border border-cyan/30 rounded-lg p-4">';
+                html += '<h4 class="text-lg font-semibold text-cyan mb-3">角色信息</h4>';
+                
+                // 主角
+                if (characters.protagonist.length > 0) {
+                    html += `
+                        <div class="mb-4">
+                            <h5 class="text-secondary font-semibold mb-2">主角 (${characters.protagonist.length})</h5>
+                            <div class="space-y-3">
+                                ${characters.protagonist.map((char, index) => `
+                                    <div class="bg-dark/50 p-2 rounded">
+                                        <p class="font-medium">${index + 1}. ${char.name} (${char.age}岁)</p>
+                                        <p class="text-gray-400">${char.identity}</p>
+                                        <p><span class="text-gray-400">动机:</span> ${char.motivation}</p>
+                                        <p><span class="text-gray-400">目标:</span> ${char.goal}</p>
+                                        <p><span class="text-gray-400">心理:</span> ${char.psychology}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 反派
+                if (characters.antagonist.length > 0) {
+                    html += `
+                        <div class="mb-4">
+                            <h5 class="text-highlight font-semibold mb-2">反派 (${characters.antagonist.length})</h5>
+                            <div class="space-y-3">
+                                ${characters.antagonist.map((char, index) => `
+                                    <div class="bg-dark/50 p-2 rounded">
+                                        <p class="font-medium">${index + 1}. ${char.name} (${char.age}岁)</p>
+                                        <p class="text-gray-400">${char.identity}</p>
+                                        <p><span class="text-gray-400">动机:</span> ${char.motivation}</p>
+                                        <p><span class="text-gray-400">目标:</span> ${char.goal}</p>
+                                        <p><span class="text-gray-400">心理:</span> ${char.psychology}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 配角
+                if (characters.supporting.length > 0) {
+                    html += `
+                        <div>
+                            <h5 class="text-accent font-semibold mb-2">配角 (${characters.supporting.length})</h5>
+                            <div class="space-y-3">
+                                ${characters.supporting.map((char, index) => `
+                                    <div class="bg-dark/50 p-2 rounded">
+                                        <p class="font-medium">${index + 1}. ${char.name} (${char.age}岁)</p>
+                                        <p class="text-gray-400">${char.identity}</p>
+                                        <p><span class="text-gray-400">动机:</span> ${char.motivation}</p>
+                                        <p><span class="text-gray-400">目标:</span> ${char.goal}</p>
+                                        <p><span class="text-gray-400">心理:</span> ${char.psychology}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+                return html;
+            }
+            
+            editProject(id) {
+                const project = this.projects.find(p => p.id === id);
+                if (!project) return;
+                
+                currentProjectId = id;
+                
+                // 填充基础信息
+                document.getElementById('project-name').value = project.name;
+                document.getElementById('project-ip-source').value = project.ipSource || '';
+                document.getElementById('project-type').value = project.type;
+                document.querySelector(`input[name="project-category"][value="${project.category}"]`).checked = true;
+                document.querySelector(`input[name="project-purpose"][value="${project.purpose}"]`).checked = true;
+                document.getElementById('project-one-line').value = project.oneLine || '';
+                document.getElementById('project-expectation').value = project.expectation || '';
+                document.getElementById('project-hook').value = project.hook || '';
+                
+                // 填充结构信息
+                document.getElementById('structure-opening').value = project.structure.opening || '';
+                document.getElementById('structure-conflict-emerge').value = project.structure.conflictEmerge || '';
+                document.getElementById('structure-conflict-escalate').value = project.structure.conflictEscalate || '';
+                document.getElementById('structure-conflict-turn').value = project.structure.conflictTurn || '';
+                document.getElementById('structure-conflict-resolve').value = project.structure.conflictResolve || '';
+                
+                // 清空现有角色、节点、素材
+                document.getElementById('protagonist-container').innerHTML = '';
+                document.getElementById('antagonist-container').innerHTML = '';
+                document.getElementById('supporting-container').innerHTML = '';
+                document.getElementById('key-nodes-container').innerHTML = '';
+                document.getElementById('materials-container').innerHTML = '';
+                
+                // 重置计数
+                characterCounts = { protagonist: 0, antagonist: 0, supporting: 0 };
+                keyNodeCount = 0;
+                materialCount = 0;
+                
+                // 填充角色信息
+                project.characters.protagonist.forEach(char => this.restoreCharacter('protagonist', char));
+                project.characters.antagonist.forEach(char => this.restoreCharacter('antagonist', char));
+                project.characters.supporting.forEach(char => this.restoreCharacter('supporting', char));
+                
+                // 填充关键节点
+                project.structure.keyNodes.forEach(node => this.restoreKeyNode(node));
+                
+                // 填充素材
+                project.materials.forEach(material => this.restoreMaterial(material));
+                
+                // 滚动到顶部
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                this.showNotification('项目数据已加载到表单，修改后请重新保存', 'info');
+            }
+            
+            restoreCharacter(type, char) {
+                const container = document.getElementById(`${type}-container`);
+                const card = document.createElement('div');
+                card.className = 'character-card animate-fade-in';
+                
+                const typeNames = {
+                    protagonist: '主角',
+                    antagonist: '反派',
+                    supporting: '配角'
+                };
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <h5 class="font-semibold text-${type === 'protagonist' ? 'secondary' : type === 'antagonist' ? 'highlight' : 'accent'}">${typeNames[type]} ${++characterCounts[type]}</h5>
+                        <button type="button" onclick="removeCharacter('${type}', this)" class="text-gray-400 hover:text-highlight">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <input type="text" class="${type}-name input-cyber w-full p-2 rounded" placeholder="角色姓名" value="${char.name}">
+                        <input type="text" class="${type}-age input-cyber w-full p-2 rounded" placeholder="角色年龄" value="${char.age}">
+                        <input type="text" class="${type}-identity input-cyber w-full p-2 rounded" placeholder="社会身份" value="${char.identity}">
+                        <input type="text" class="${type}-motivation input-cyber w-full p-2 rounded" placeholder="行为动机" value="${char.motivation}">
+                        <input type="text" class="${type}-goal input-cyber w-full p-2 rounded" placeholder="角色目的" value="${char.goal}">
+                        <textarea class="${type}-psychology input-cyber w-full p-2 rounded" rows="2" placeholder="心理挖掘">${char.psychology}</textarea>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            }
+            
+            restoreKeyNode(node) {
+                const container = document.getElementById('key-nodes-container');
+                const card = document.createElement('div');
+                card.className = 'node-card animate-fade-in';
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <h5 class="font-semibold text-accent">关键节点 ${++keyNodeCount}</h5>
+                        <button type="button" onclick="removeKeyNode(this)" class="text-gray-400 hover:text-highlight">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <input type="text" class="node-title input-cyber w-full p-2 rounded" placeholder="节点标题" value="${node.title}">
+                        <textarea class="node-description input-cyber w-full p-2 rounded" rows="2" placeholder="节点描述">${node.description}</textarea>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            }
+            
+            restoreMaterial(material) {
+                const container = document.getElementById('materials-container');
+                const card = document.createElement('div');
+                card.className = 'material-card animate-fade-in';
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <h5 class="font-semibold text-highlight">素材 ${++materialCount}</h5>
+                        <button type="button" onclick="removeMaterial(this)" class="text-gray-400 hover:text-highlight">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <input type="text" class="material-title input-cyber w-full p-2 rounded" placeholder="素材标题" value="${material.title}">
+                        <textarea class="material-description input-cyber w-full p-2 rounded" rows="2" placeholder="素材描述">${material.description}</textarea>
+                        <input type="text" class="material-source input-cyber w-full p-2 rounded" placeholder="素材来源" value="${material.source}">
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            }
+            
+            deleteProject(id) {
+                if (confirm('确定要删除这个项目吗？此操作不可恢复。')) {
+                    this.projects = this.projects.filter(p => p.id !== id);
+                    this.saveToStorage();
+                    this.loadProjects();
+                    this.showNotification('项目删除成功！', 'success');
+                }
+            }
+            
+            exportAllProjects() {
+                if (this.projects.length === 0) {
+                    this.showNotification('暂无项目可导出', 'error');
+                    return;
+                }
+                
+                const format = document.getElementById('export-format').value;
+                let content, filename, mimeType;
+                
+                if (format === 'csv') {
+                    content = this.convertToCSV(this.projects);
+                    filename = 'all_projects.csv';
+                    mimeType = 'text/csv;charset=utf-8;';
+                } else if (format === 'txt') {
+                    content = this.convertToTXT(this.projects);
+                    filename = 'all_projects.txt';
+                    mimeType = 'text/plain;charset=utf-8;';
+                } else if (format === 'json') {
+                    content = JSON.stringify(this.projects, null, 2);
+                    filename = 'all_projects.json';
+                    mimeType = 'application/json;charset=utf-8;';
+                }
+                
+                this.downloadFile(content, filename, mimeType);
+                this.showNotification('项目导出成功！', 'success');
+            }
+            
+            exportSingleProject(id, format) {
+                const project = this.projects.find(p => p.id === id);
+                if (!project) return;
+                
+                let content, filename, mimeType;
+                
+                if (format === 'csv') {
+                    content = this.convertToCSV([project]);
+                    filename = `${project.name}_project.csv`;
+                    mimeType = 'text/csv;charset=utf-8;';
+                } else if (format === 'txt') {
+                    content = this.convertToDetailedTXT(project);
+                    filename = `${project.name}_project.txt`;
+                    mimeType = 'text/plain;charset=utf-8;';
+                } else if (format === 'json') {
+                    content = JSON.stringify(project, null, 2);
+                    filename = `${project.name}_project.json`;
+                    mimeType = 'application/json;charset=utf-8;';
+                }
+                
+                this.downloadFile(content, filename, mimeType);
+                this.showNotification('项目导出成功！', 'success');
+            }
+            
+            convertToCSV(projects) {
+                const headers = ['项目名称', '类型', '分类', '一句话故事', '期待感', '钩子', '主角数量', '反派数量', '配角数量', '关键节点数量', '素材数量', '创建时间', '更新时间'];
+                const csvContent = [headers.join(',')];
+                
+                projects.forEach(project => {
+                    const row = [
+                        `"${project.name}"`,
+                        `"${project.type}"`,
+                        `"${project.category}"`,
+                        `"${project.oneLine || ''}"`,
+                        `"${project.expectation || ''}"`,
+                        `"${project.hook || ''}"`,
+                        project.characters.protagonist.length,
+                        project.characters.antagonist.length,
+                        project.characters.supporting.length,
+                        project.structure.keyNodes.length,
+                        project.materials.length,
+                        `"${new Date(project.createdAt).toLocaleString()}"`,
+                        `"${new Date(project.updatedAt).toLocaleString()}"`
+                    ];
+                    csvContent.push(row.join(','));
+                });
+                
+                return csvContent.join('\n');
+            }
+            
+            convertToTXT(projects) {
+                let txtContent = `===== 项目列表 =====\n\n`;
+                
+                projects.forEach((project, index) => {
+                    txtContent += `【项目 ${index + 1}】${project.name}\n`;
+                    txtContent += `类型：${project.type} | 分类：${project.category}\n`;
+                    txtContent += `一句话故事：${project.oneLine || '暂无'}\n`;
+                    txtContent += `角色：主角${project.characters.protagonist.length}人 | 反派${project.characters.antagonist.length}人 | 配角${project.characters.supporting.length}人\n`;
+                    txtContent += `节点：${project.structure.keyNodes.length}个 | 素材：${project.materials.length}个\n`;
+                    txtContent += `更新时间：${new Date(project.updatedAt).toLocaleString()}\n`;
+                    txtContent += '=' .repeat(50) + '\n\n';
+                });
+                
+                return txtContent;
+            }
+            
+            convertToDetailedTXT(project) {
+                let txtContent = `===== ${project.name} =====\n\n`;
+                
+                // 基础信息
+                txtContent += `【基础信息】\n`;
+                txtContent += `项目名称：${project.name}\n`;
+                txtContent += `项目类型：${project.type}\n`;
+                txtContent += `分类：${project.category}\n`;
+                txtContent += `IP来源：${project.ipSource || '原创'}\n`;
+                txtContent += `一句话故事：${project.oneLine || '暂无'}\n`;
+                txtContent += `期待感：${project.expectation || '暂无'}\n`;
+                txtContent += `钩子：${project.hook || '暂无'}\n\n`;
+                
+                // 角色信息
+                txtContent += `【角色信息】\n`;
+                
+                if (project.characters.protagonist.length > 0) {
+                    txtContent += `主角：\n`;
+                    project.characters.protagonist.forEach((char, index) => {
+                        txtContent += `  ${index + 1}. ${char.name} (${char.age}岁)\n`;
+                        txtContent += `     身份：${char.identity}\n`;
+                        txtContent += `     动机：${char.motivation}\n`;
+                        txtContent += `     目标：${char.goal}\n`;
+                        txtContent += `     心理：${char.psychology}\n`;
+                    });
+                }
+                
+                if (project.characters.antagonist.length > 0) {
+                    txtContent += `反派：\n`;
+                    project.characters.antagonist.forEach((char, index) => {
+                        txtContent += `  ${index + 1}. ${char.name} (${char.age}岁)\n`;
+                        txtContent += `     身份：${char.identity}\n`;
+                        txtContent += `     动机：${char.motivation}\n`;
+                        txtContent += `     目标：${char.goal}\n`;
+                        txtContent += `     心理：${char.psychology}\n`;
+                    });
+                }
+                
+                if (project.characters.supporting.length > 0) {
+                    txtContent += `配角：\n`;
+                    project.characters.supporting.forEach((char, index) => {
+                        txtContent += `  ${index + 1}. ${char.name} (${char.age}岁)\n`;
+                        txtContent += `     身份：${char.identity}\n`;
+                        txtContent += `     动机：${char.motivation}\n`;
+                        txtContent += `     目标：${char.goal}\n`;
+                        txtContent += `     心理：${char.psychology}\n`;
+                    });
+                }
+                
+                txtContent += '\n';
+                
+                // 结构信息
+                txtContent += `【结构信息】\n`;
+                txtContent += `开篇：${project.structure.opening || '暂无'}\n`;
+                txtContent += `矛盾初现：${project.structure.conflictEmerge || '暂无'}\n`;
+                txtContent += `矛盾爆发：${project.structure.conflictEscalate || '暂无'}\n`;
+                txtContent += `矛盾转折：${project.structure.conflictTurn || '暂无'}\n`;
+                txtContent += `矛盾解决：${project.structure.conflictResolve || '暂无'}\n`;
+                
+                if (project.structure.keyNodes.length > 0) {
+                    txtContent += `关键节点：\n`;
+                    project.structure.keyNodes.forEach((node, index) => {
+                        txtContent += `  ${index + 1}. ${node.title}\n`;
+                        txtContent += `     ${node.description}\n`;
+                    });
+                }
+                
+                txtContent += '\n';
+                
+                // 素材信息
+                if (project.materials.length > 0) {
+                    txtContent += `【素材信息】\n`;
+                    project.materials.forEach((material, index) => {
+                        txtContent += `  ${index + 1}. ${material.title}\n`;
+                        txtContent += `     ${material.description}\n`;
+                        if (material.source) {
+                            txtContent += `     来源：${material.source}\n`;
+                        }
+                    });
+                }
+                
+                txtContent += '\n';
+                txtContent += `【时间信息】\n`;
+                txtContent += `创建时间：${new Date(project.createdAt).toLocaleString()}\n`;
+                txtContent += `更新时间：${new Date(project.updatedAt).toLocaleString()}\n`;
+                
+                return txtContent;
+            }
+            
+            downloadFile(content, filename, mimeType) {
+                const blob = new Blob([content], { type: mimeType });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.display = 'none';
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+            }
+            
+            clearForm() {
+                document.getElementById('project-form').reset();
+                
+                // 清空角色、节点、素材
+                document.getElementById('protagonist-container').innerHTML = '';
+                document.getElementById('antagonist-container').innerHTML = '';
+                document.getElementById('supporting-container').innerHTML = '';
+                document.getElementById('key-nodes-container').innerHTML = '';
+                document.getElementById('materials-container').innerHTML = '';
+                
+                // 重置计数
+                characterCounts = { protagonist: 0, antagonist: 0, supporting: 0 };
+                keyNodeCount = 0;
+                materialCount = 0;
+            }
+            
+            saveToStorage() {
+                localStorage.setItem('cyberpunk_projects', JSON.stringify(this.projects));
+            }
+            
+            showNotification(message, type = 'info') {
+                const notification = document.getElementById('notification');
+                const icon = document.getElementById('notification-icon');
+                const messageEl = document.getElementById('notification-message');
+                
+                if (type === 'success') {
+                    icon.className = 'fa fa-check-circle text-green-400 text-xl';
+                    notification.className = notification.className.replace(/border-\w+/, 'border-green-400');
+                } else if (type === 'error') {
+                    icon.className = 'fa fa-exclamation-circle text-red-400 text-xl';
+                    notification.className = notification.className.replace(/border-\w+/, 'border-red-400');
+                } else {
+                    icon.className = 'fa fa-info-circle text-cyan text-xl';
+                    notification.className = notification.className.replace(/border-\w+/, 'border-cyan');
+                }
+                
+                messageEl.textContent = message;
+                
+                notification.classList.remove('translate-x-full');
+                
+                setTimeout(() => {
+                    notification.classList.add('translate-x-full');
+                }, 3000);
+            }
+        }
+
+        // 全局函数
+        function addCharacter(type) {
+            if (characterCounts[type] >= 10) {
+                projectManager.showNotification(`最多只能添加10个${type === 'protagonist' ? '主角' : type === 'antagonist' ? '反派' : '配角'}`, 'error');
+                return;
+            }
+            
+            const container = document.getElementById(`${type}-container`);
+            const card = document.createElement('div');
+            card.className = 'character-card animate-fade-in';
+            
+            const typeNames = {
+                protagonist: '主角',
+                antagonist: '反派',
+                supporting: '配角'
+            };
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                    <h5 class="font-semibold text-${type === 'protagonist' ? 'secondary' : type === 'antagonist' ? 'highlight' : 'accent'}">${typeNames[type]} ${++characterCounts[type]}</h5>
+                    <button type="button" onclick="removeCharacter('${type}', this)" class="text-gray-400 hover:text-highlight">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-2 text-sm">
+                    <input type="text" class="${type}-name input-cyber w-full p-2 rounded" placeholder="角色姓名">
+                    <input type="text" class="${type}-age input-cyber w-full p-2 rounded" placeholder="角色年龄">
+                    <input type="text" class="${type}-identity input-cyber w-full p-2 rounded" placeholder="社会身份">
+                    <input type="text" class="${type}-motivation input-cyber w-full p-2 rounded" placeholder="行为动机">
+                    <input type="text" class="${type}-goal input-cyber w-full p-2 rounded" placeholder="角色目的">
+                    <textarea class="${type}-psychology input-cyber w-full p-2 rounded" rows="2" placeholder="心理挖掘"></textarea>
+                </div>
+            `;
+            
+            container.appendChild(card);
+        }
+
+        function removeCharacter(type, button) {
+            const card = button.closest('.character-card');
+            card.remove();
+            characterCounts[type]--;
+            
+            // 重新编号
+            const cards = document.querySelectorAll(`#${type}-container .character-card`);
+            cards.forEach((card, index) => {
+                card.querySelector('h5').textContent = `${type === 'protagonist' ? '主角' : type === 'antagonist' ? '反派' : '配角'} ${index + 1}`;
+            });
+        }
+
+        function addKeyNode() {
+            if (keyNodeCount >= 20) {
+                projectManager.showNotification('最多只能添加20个关键节点', 'error');
+                return;
+            }
+            
+            const container = document.getElementById('key-nodes-container');
+            const card = document.createElement('div');
+            card.className = 'node-card animate-fade-in';
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                    <h5 class="font-semibold text-accent">关键节点 ${++keyNodeCount}</h5>
+                    <button type="button" onclick="removeKeyNode(this)" class="text-gray-400 hover:text-highlight">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-2 text-sm">
+                    <input type="text" class="node-title input-cyber w-full p-2 rounded" placeholder="节点标题">
+                    <textarea class="node-description input-cyber w-full p-2 rounded" rows="2" placeholder="节点描述"></textarea>
+                </div>
+            `;
+            
+            container.appendChild(card);
+        }
+
+        function removeKeyNode(button) {
+            const card = button.closest('.node-card');
+            card.remove();
+            keyNodeCount--;
+            
+            // 重新编号
+            const cards = document.querySelectorAll('#key-nodes-container .node-card');
+            cards.forEach((card, index) => {
+                card.querySelector('h5').textContent = `关键节点 ${index + 1}`;
+            });
+        }
+
+        function addMaterial() {
+            if (materialCount >= 20) {
+                projectManager.showNotification('最多只能添加20个素材', 'error');
+                return;
+            }
+            
+            const container = document.getElementById('materials-container');
+            const card = document.createElement('div');
+            card.className = 'material-card animate-fade-in';
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                    <h5 class="font-semibold text-highlight">素材 ${++materialCount}</h5>
+                    <button type="button" onclick="removeMaterial(this)" class="text-gray-400 hover:text-highlight">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-2 text-sm">
+                    <input type="text" class="material-title input-cyber w-full p-2 rounded" placeholder="素材标题">
+                    <textarea class="material-description input-cyber w-full p-2 rounded" rows="2" placeholder="素材描述"></textarea>
+                    <input type="text" class="material-source input-cyber w-full p-2 rounded" placeholder="素材来源">
+                </div>
+            `;
+            
+            container.appendChild(card);
+        }
+
+        function removeMaterial(button) {
+            const card = button.closest('.material-card');
+            card.remove();
+            materialCount--;
+            
+            // 重新编号
+            const cards = document.querySelectorAll('#materials-container .material-card');
+            cards.forEach((card, index) => {
+                card.querySelector('h5').textContent = `素材 ${index + 1}`;
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('project-modal').classList.add('hidden');
+            currentProjectId = null;
+        }
+
+        // 清空表单函数
+        function clearForm() {
+            if (confirm('确定要清空当前填写的内容吗？此操作不可恢复。')) {
+                document.getElementById('project-form').reset();
+                
+                // 清空角色、节点、素材
+                document.getElementById('protagonist-container').innerHTML = '';
+                document.getElementById('antagonist-container').innerHTML = '';
+                document.getElementById('supporting-container').innerHTML = '';
+                document.getElementById('key-nodes-container').innerHTML = '';
+                document.getElementById('materials-container').innerHTML = '';
+                
+                // 重置计数
+                characterCounts = { protagonist: 0, antagonist: 0, supporting: 0 };
+                keyNodeCount = 0;
+                materialCount = 0;
+                
+                // 重置当前项目ID
+                currentProjectId = null;
+                
+                projectManager.showNotification('表单内容已清空', 'info');
+            }
+        }
+
+        // 初始化项目管理器
+        const projectManager = new ProjectManager();
+
+        // 添加一些示例数据
+        if (projectManager.projects.length === 0) {
+            const sampleProject = {
+                id: 'sample-1',
+                name: '赛博朋克2077：自由幻象',
+                ipSource: '游戏改编',
+                type: '电影',
+                category: '实拍',
+            purpose: '拉片',
+                oneLine: '在夜之城的霓虹灯下，一名前雇佣兵为了寻找失去的记忆，踏上了一段揭露 corporate 黑暗秘密的旅程。',
+                expectation: '观众期待看到壮观的赛博朋克世界观、激烈的动作场面和深刻的人性探讨。',
+                hook: '主角发现自己的记忆被人为篡改，而真相可能关乎整个城市的命运。',
+                characters: {
+                    protagonist: [
+                        {
+                            name: '维克托·陈',
+                            age: '35',
+                            identity: '前雇佣兵，现在是自由黑客',
+                            motivation: '寻找失去的记忆，揭露真相',
+                            goal: '推翻控制城市的 corporate 势力',
+                            psychology: '表面冷漠，内心渴望 connection，对过去的愧疚驱动他不断前进'
+                        }
+                    ],
+                    antagonist: [
+                        {
+                            name: '艾丽莎·金',
+                            age: '42',
+                            identity: 'Arasaka 公司的首席安全官',
+                            motivation: '维护公司利益，消除威胁',
+                            goal: '捕获主角，销毁所有证据',
+                            psychology: '相信自己的所作所为是为了更大的利益，对 corporate 的忠诚已经扭曲了她的道德观'
+                        }
+                    ],
+                    supporting: [
+                        {
+                            name: '妮娜',
+                            age: '28',
+                            identity: '地下医生，主角的旧识',
+                            motivation: '帮助朋友，反抗不公',
+                            goal: '为主角提供医疗和情报支持',
+                            psychology: '乐观坚强，在绝望的世界中保持人性的闪光点'
+                        }
+                    ]
+                },
+                structure: {
+                    opening: '夜之城的雨夜，主角维克托从一次失败的任务中醒来，发现自己失去了最近两年的记忆。',
+                    conflictEmerge: '维克托发现自己被 Arasaka 公司追杀，同时开始收到神秘人的警告信息。',
+                    conflictEscalate: '在调查过程中，维克托发现自己的记忆被人为篡改，而他曾经参与了一个可怕的实验项目。',
+                    conflictTurn: '维克托与妮娜合作，找到了实验的关键证据，却发现妮娜也有着不为人知的过去。',
+                    conflictResolve: '最终对决中，维克托面对艾丽莎，揭露了 Arasaka 的阴谋，选择牺牲自己来保护城市的未来。',
+                    keyNodes: [
+                        {
+                            title: '记忆碎片',
+                            description: '维克托开始断断续续地回忆起过去的片段，发现自己曾经是 Arasaka 的实验对象。'
+                        },
+                        {
+                            title: '真相大白',
+                            description: '维克托发现所谓的"自由幻象"实验是为了创造完全受控制的超级士兵。'
+                        },
+                        {
+                            title: '最终抉择',
+                            description: '维克托必须选择是拯救自己，还是揭露真相拯救更多的人。'
+                        }
+                    ]
+                },
+                materials: [
+                    {
+                        title: '银翼杀手2049',
+                        description: '视觉风格和世界观参考，特别是雨夜场景和霓虹灯光效',
+                        source: '电影'
+                    },
+                    {
+                        title: '赛博朋克2077游戏',
+                        description: '夜之城的布局和 factions 设定',
+                        source: '游戏'
+                    }
+                ],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            projectManager.projects.push(sampleProject);
+            projectManager.saveToStorage();
+            projectManager.loadProjects();
+        }
+    </script>
+</body>
+</html>
